@@ -20,8 +20,7 @@ this pipeline and the classic TBSS: the registration method, the automatic
 estimation and use of more measurements of FA, and the values projected onto
 the final white matter skeleton.
 
-This is still a work in progress. Please report any errors to matthew.j.leming at gmail dot com
-
+This is still a work in progress. Please report any errors to my account.
 Setup
 -----------
 

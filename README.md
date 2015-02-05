@@ -51,10 +51,10 @@ Installation
 This software is mostly bash scripts, so put the folder alt_tbss in your path or
 execute each script sequentially:
 
->cd <data_folder>
->alt_tbss_1.sh
->alt_tbss_2.sh
->alt_tbss_3.sh
+    cd <data_folder>
+    alt_tbss_1.sh
+    alt_tbss_2.sh
+    alt_tbss_3.sh
 
 
 Running it
@@ -62,21 +62,18 @@ Running it
 
 Once all of the above software is installed, do the following:
 
-1. Add, in the file DTIAtlasBuilderSoftConfig.txt, the paths of all of the executables for all installed
-programs
-2. Insert all of your skull-stripped DTI data, in .nrrd format, into a folder
-3. In a terminal, cd to that folder
+ 1. Add, in the file DTIAtlasBuilderSoftConfig.txt, the paths of all of the executables for all installed programs
+ 2. Insert all of your skull-stripped DTI data, in .nrrd format, into a folder
+ 3. In a terminal, cd to that folder
 
-> cd /path/to/data/folder
+    cd /path/to/data/folder
 
-4. Run the first script
+ 4. Run the first script
 
-> bash /path/to/alt_tbss_1.sh
+    bash /path/to/alt_tbss_1.sh
 
-5. After this, run alt_tbss_2.sh and alt_tbss_3.sh sequentially, checking for errors
-in data in between runs.
+ 5. After this, run alt_tbss_2.sh and alt_tbss_3.sh sequentially, checking for errors in data in between runs.
 
-6. For display options and other information, see: http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/TBSS/UserGuide
+ 6. For display options and other information, see: http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/TBSS/UserGuide
 
-7. alt_tbss_2.sh gives information about greating the files that separate each group. It will automatically
-generate a blank CSV with each subject name, which you may edit to separate them.
+ 7. alt_tbss_2.sh gives information about greating the files that separate each group. It will automatically generate a blank CSV with each subject name, which you may edit to separate them.

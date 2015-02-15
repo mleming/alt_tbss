@@ -4,6 +4,18 @@ help=`echo $@ | grep "\(--help\|-h\)"`
 nogui=`echo $@ | grep "\(--nogui\)"`
 gaussian=`echo $@ | grep "\(--gaussian\|-g\)"`
 sigma=`echo $@ | sed 's/.*[[:space:]]*-s[[:space:]]*\(\w*\).*/\1/g' | grep ^[0-9]*$`; if [ -z "$sigma" ]; then sigma=3; fi
+all_measures=`echo $@ | grep '\(--\)\(RD\|AD\|MD\|FA\)'`
+compute_FA=`echo $@ | grep "\(--FA\)"`
+compute_AD=`echo $@ | grep "\(--AD\)"`
+compute_MD=`echo $@ | grep "\(--MD\)"`
+compute_RD=`echo $@ | grep "\(--RD\)"`
+if [ -z "$all_measures" ]
+then
+	compute_FA="line"
+	compute_AD="line"
+	compute_MD="line"
+	compute_RD="line"
+fi
 
 if [ ! -z "$help" ]
 then
@@ -75,51 +87,57 @@ for i in `ls -d1 $PWD/DTI/*float.nii.gz`
            if [ ! -e "$out_AD_gaussian" ]; then $FSLDIR/bin/fslmaths $out_AD -s $sigma $out_AD_gaussian; fi
            if [ ! -e "$out_MD_gaussian" ]; then $FSLDIR/bin/fslmaths $out_MD -s $sigma $out_MD_gaussian; fi
            if [ ! -e "$out_RD_gaussian" ]; then $FSLDIR/bin/fslmaths $out_RD -s $sigma $out_RD_gaussian; fi
-           if [ ! -e "FA/${basename}_mask.nii.gz" ]; then $FSLDIR/bin/fslmaths $out_FA -bin FA/${basename}_mask.nii.gz; fi # Create mask from FA
      fi
+     if [ ! -e "FA/${basename}_mask.nii.gz" ]; then $FSLDIR/bin/fslmaths $out_FA -bin FA/${basename}_mask.nii.gz; fi # Create mask from FA
 done
 
 mkdir -p stats
 
 echo "Merging FA files"
-if [ ! -e "stats/all_FA.nii.gz" ]; then fslmerge -t stats/all_FA.nii.gz $ALL_FA; fi
-if [ ! -e "stats/all_FA_gaussian.nii.gz" ] && [ ! -z "$gaussian" ]; then fslmerge -t stats/all_FA_gaussian.nii.gz $ALL_FA_GAUSSIAN; fi
+if [ ! -e "stats/all_FA.nii.gz" ] && [ ! -z "$compute_FA" ]; then fslmerge -t stats/all_FA.nii.gz $ALL_FA; fi
+if [ ! -e "stats/all_FA_gaussian.nii.gz" ] && [ ! -z "$gaussian" ] && [ ! -z "$compute_FA" ]; then fslmerge -t stats/all_FA_gaussian.nii.gz $ALL_FA_GAUSSIAN; fi
 
 echo "Merging AD files"
-if [ ! -e "stats/all_AD.nii.gz" ]; then fslmerge -t stats/all_AD.nii.gz $ALL_AD; fi
-if [ ! -e "stats/all_AD_gaussian.nii.gz" ] && [ ! -z "$gaussian" ]; then fslmerge -t stats/all_AD_gaussian.nii.gz $ALL_AD_GAUSSIAN; fi
+if [ ! -e "stats/all_AD.nii.gz" ] && [ ! -z "$compute_AD" ]; then fslmerge -t stats/all_AD.nii.gz $ALL_AD; fi
+if [ ! -e "stats/all_AD_gaussian.nii.gz" ] && [ ! -z "$gaussian" ] && [ ! -z "$compute_AD" ]; then fslmerge -t stats/all_AD_gaussian.nii.gz $ALL_AD_GAUSSIAN; fi
 
 echo "Merging MD files"
-if [ ! -e "stats/all_MD.nii.gz" ]; then fslmerge -t stats/all_MD.nii.gz $ALL_MD; fi
-if [ ! -e "stats/all_MD_gaussian.nii.gz" ] && [ ! -z "$gaussian" ]; then fslmerge -t stats/all_MD_gaussian.nii.gz $ALL_MD_GAUSSIAN; fi
+if [ ! -e "stats/all_MD.nii.gz" ] && [ ! -z "$compute_AD" ]; then fslmerge -t stats/all_MD.nii.gz $ALL_MD; fi
+if [ ! -e "stats/all_MD_gaussian.nii.gz" ] && [ ! -z "$gaussian" ] && [ ! -z "$compute_MD" ]; then fslmerge -t stats/all_MD_gaussian.nii.gz $ALL_MD_GAUSSIAN; fi
 
 echo "Merging RD files"
-if [ ! -e "stats/all_RD.nii.gz" ]; then fslmerge -t stats/all_RD.nii.gz $ALL_RD; fi
-if [ ! -e "stats/all_RD_gaussian.nii.gz" ] && [ ! -z "$gaussian" ]; then fslmerge -t stats/all_RD_gaussian.nii.gz $ALL_RD_GAUSSIAN; fi
+if [ ! -e "stats/all_RD.nii.gz" ] && [ ! -z "$compute_RD" ]; then fslmerge -t stats/all_RD.nii.gz $ALL_RD; fi
+if [ ! -e "stats/all_RD_gaussian.nii.gz" ] && [ ! -z "$gaussian" ] && [ ! -z "$compute_RD" ]; then fslmerge -t stats/all_RD_gaussian.nii.gz $ALL_RD_GAUSSIAN; fi
 
 echo "Creating valid mask and mean FA"
 
+if [ ! -e "stats/mean_FA.nii.gz" ]; then $FSLDIR/bin/fslmaths stats/all_FA -Tmean stats/mean_FA; fi
+
 if [ ! -e "stats/mean_FA_mask.nii.gz" ]
 then
-	$FSLDIR/bin/fslmaths stats/all_FA -max 0 -Tmin -bin stats/mean_FA_mask -odt char
+##	$FSLDIR/bin/fslmaths stats/all_FA -max 0 -Tmin -bin stats/mean_FA_mask -odt char
+	$FSLDIR/bin/fslmaths stats/mean_FA -thr 0.00005 -bin stats/mean_FA_mask -odt char
 fi
 
-if [ -z "$nogui" ];
-then
-	fslview stats/mean_FA stats/mean_FA_mask;
-fi
+#if [ -z "$nogui" ];
+#then
+#	fslview stats/mean_FA stats/mean_FA_mask;
+#fi
 
-if [ ! -e "stats/mean_FA_mask.nii.gz" ]; then $FSLDIR/bin/fslmaths stats/all_FA -mas stats/mean_FA_mask stats/all_FA; fi
+$FSLDIR/bin/fslmaths stats/all_FA -mas stats/mean_FA_mask stats/all_FA
+$FSLDIR/bin/fslmaths stats/all_AD -mas stats/mean_FA_mask stats/all_AD
+$FSLDIR/bin/fslmaths stats/all_RD -mas stats/mean_FA_mask stats/all_RD
+$FSLDIR/bin/fslmaths stats/all_MD -mas stats/mean_FA_mask stats/all_MD
 if [ ! -e "stats/mean_FA.nii.gz" ]; then $FSLDIR/bin/fslmaths stats/all_FA -Tmean stats/mean_FA; fi
 
 echo "Creating mean AD"
-if [ ! -e "stats/mean_AD.nii.gz" ]; then $FSLDIR/bin/fslmaths stats/all_AD -Tmean stats/mean_AD; fi
+if [ ! -e "stats/mean_AD.nii.gz" ] && [ ! -z "$compute_AD" ]; then $FSLDIR/bin/fslmaths stats/all_AD -Tmean stats/mean_AD; fi
 
 echo "Creating mean MD"
-if [ ! -e "stats/mean_MD.nii.gz" ]; then $FSLDIR/bin/fslmaths stats/all_MD -Tmean stats/mean_MD; fi
+if [ ! -e "stats/mean_MD.nii.gz" ] && [ ! -z "$compute_MD" ]; then $FSLDIR/bin/fslmaths stats/all_MD -Tmean stats/mean_MD; fi
 
 echo "Creating mean RD"
-if [ ! -e "stats/mean_RD.nii.gz" ]; then $FSLDIR/bin/fslmaths stats/all_RD -Tmean stats/mean_RD; fi
+if [ ! -e "stats/mean_RD.nii.gz" ] && [ ! -z "$compute_RD" ]; then $FSLDIR/bin/fslmaths stats/all_RD -Tmean stats/mean_RD; fi
 
 echo "Skeletonising mean FA"
 if [ ! -e "stats/mean_FA_skeleton.nii.gz" ]; then $FSLDIR/bin/tbss_skeleton -i stats/mean_FA -o stats/mean_FA_skeleton; fi

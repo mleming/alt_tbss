@@ -1,6 +1,8 @@
 #!/bin/bash
 
 help=`echo $@ | grep "\(--help\|-h\)"`
+permutations=`echo $@ | grep "\(-p[[:space:]]*[0-9][0-9]*\)" | sed 's/-p[[:space:]]*\([0-9]*\)[[:space:]]*/\1/g'`
+if [ -z "$permutations" ]; then permutations=5000; fi
 if [ ! -z "$help" ]
 then
 	echo "alt_tbss_4.sh"
@@ -11,6 +13,7 @@ then
 	echo "and you may edit that."
 	echo "Usage:"
 	echo " -h --help : Display this message"
+	echo " -p <integer> : Number of permutations during randomisation step (default 5000)"
 	exit
 fi
 
@@ -22,7 +25,7 @@ if [ ! -e "stats/design.mat" ]
 then
 	if [ -e "groupfile.csv" ]
 	then
-		${FSLDIR}/bin/design_ttest2 design `ls *.nrrd | wc -l` 0
+		${FSLDIR}/bin/design_ttest2 stats/design `ls DTI/*.nii.gz | wc -l` 0
 		echo "/NumWaves 2" > stats/design.mat
 		echo "/NumPoints `cat groupfile.csv | wc -l`" >> stats/design.mat
 		echo "/PPheights 1 1" >> stats/design.mat
@@ -38,7 +41,8 @@ then
 		echo "groupfile.csv with all subjects in the same group. If you wish to edit this"
 		echo "file, change the 0's to 1's for the subjects in a different group."
 		
-		ls *.nrrd | sed 's/\.nrrd/\.nrrd,0,/g' > groupfile.txt
+		ls DTI/*.nii.gz | sed 's/\.nii\.gz/\.nii\.gz,0,/g' > groupfile.csv
+
 		exit
 	fi
 fi
@@ -50,7 +54,11 @@ then
 	exit
 fi
 
-randomise -i stats/all_AD_skeletonised -o stats/tbss -m stats/mean_FA_skeleton_mask -d stats/design.mat -t stats/design.con -n 5000 -c 3 -V
+randomise -i stats/all_AD_skeletonised -o stats/tbss_AD -m stats/mean_FA_skeleton_mask -d stats/design.mat -t stats/design.con -n $permutations -c 3 -V
+randomise -i stats/all_FA_skeletonised -o stats/tbss_FA -m stats/mean_FA_skeleton_mask -d stats/design.mat -t stats/design.con -n $permutations -c 3 -V
+randomise -i stats/all_RD_skeletonised -o stats/tbss_RD -m stats/mean_FA_skeleton_mask -d stats/design.mat -t stats/design.con -n $permutations -c 3 -V
+randomise -i stats/all_MD_skeletonised -o stats/tbss_MD -m stats/mean_FA_skeleton_mask -d stats/design.mat -t stats/design.con -n $permutations -c 3 -V
 
-fslview stats/mean_FA stats/mean_FA_skeleton -l Green -b 0.2,0.8 stats/tbss_tstat1 -l Red-Yellow -b 3,6 stats/tbss_tstat2 -l Blue-Lightblue -b 3,6
-fslview stats/mean_FA stats/mean_FA_skeleton -l Green -b 0.2,0.8 stats/tbss_maxc_tstat1 -l Red-Yellow -b 3,6 stats/tbss_maxc_tstat2 -l Blue-Lightblue -b 3,6
+
+#fslview stats/mean_FA stats/mean_FA_skeleton -l Green -b 0.2,0.8 stats/tbss_tstat1 -l Red-Yellow -b 3,6 stats/tbss_tstat2 -l Blue-Lightblue -b 3,6
+#fslview stats/mean_FA stats/mean_FA_skeleton -l Green -b 0.2,0.8 stats/tbss_maxc_tstat1 -l Red-Yellow -b 3,6 stats/tbss_maxc_tstat2 -l Blue-Lightblue -b 3,6

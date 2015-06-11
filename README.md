@@ -1,4 +1,4 @@
-AltTBSS
+DAB-TBSS
 ============
 
 This script uses the FSL library, developed by the FMRIB at Oxford,
@@ -51,10 +51,10 @@ This software is mostly bash scripts, so put the folder alt_tbss in your path or
 execute each script sequentially:
 
     cd <data_folder>
-    alt_tbss_1.sh
-    alt_tbss_2.sh
-    alt_tbss_3.sh
-
+    dab_tbss_1
+    dab_tbss_2
+    dab_tbss_3
+    dab_tbss_4
 
 Running it
 -------------
@@ -69,10 +69,10 @@ Once all of the above software is installed, do the following:
 
  4. Run the first script
 
-    bash /path/to/alt_tbss_1.sh
+    bash /path/to/dab_tbss_1
 
- 5. After this, run alt_tbss_2.sh and alt_tbss_3.sh sequentially, checking for errors in data in between runs.
+ 5. After this, run dab_tbss_2 and dab_tbss_3 sequentially, checking for errors in data in between runs.
 
  6. For display options and other information, see: http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/TBSS/UserGuide
 
- 7. alt_tbss_2.sh gives information about greating the files that separate each group. It will automatically generate a blank CSV with each subject name, which you may edit to separate them.
+ 7. dab_tbss_2 gives information about greating the files that separate each group. It will automatically generate a blank CSV with each subject name, which you may edit to separate them.

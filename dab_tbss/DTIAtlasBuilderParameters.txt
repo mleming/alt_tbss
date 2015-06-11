@@ -1,0 +1,18 @@
+DTIAtlasBuilderParameterFileVersion=2
+Output Folder=/path/to/output
+Atlas Template=
+SafetyMargin=false
+Loops for the registration=1
+BRAINSFit Affine Tfm Mode=useCenterOfHeadAlign
+Overwrite=false
+Scale Level =1,4,150,1,1,0.0001,0.001
+Scale Level =1,2,120,1,1,0.001,0.01
+Scale Level =1,1,100,0.1,0.1,0.01,0.1
+Resampling Interpolation Algorithm=Linear
+Tensor interpolation=Log Euclidean
+Tensor transformation=Preservation of the Principal Direction (PPD)
+DTIReg Extra Path=
+DTIRegMethod=ANTS=GreedyDiffeo (SyN);0.25;100x50x25;Cross-Correlation (CC);2;3;0
+GridProcessing=
+NbThreads=0
+CSV Dataset File=/path/to/csv

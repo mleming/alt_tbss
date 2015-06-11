@@ -1,0 +1,70 @@
+#!/bin/bash
+
+help=`echo $@ | grep "\(--help\|-h\)"`
+nogaussian=`echo $@ | grep "\(--nogaussian\|-g\)"`
+all_measures=`echo $@ | grep '\(--\)\(RD\|AD\|MD\|FA\)'`
+compute_FA=`echo $@ | grep "\(--FA\)"`
+compute_AD=`echo $@ | grep "\(--AD\)"`
+compute_MD=`echo $@ | grep "\(--MD\)"`
+compute_RD=`echo $@ | grep "\(--RD\)"`
+thresh=`echo $@ | grep "\(-t[[:space:]]*[0-9][\.0-9]*\)" | sed 's/-t[[:space:]]*\([0-9]*\)[[:space:]]*/\1/g'`
+if [ -z "$thresh" ]; then thresh=0.2; fi
+
+if [ -z "$all_measures" ]
+then
+	compute_FA="line"
+	compute_AD="line"
+	compute_MD="line"
+	compute_RD="line"
+fi
+echo $nogaussian
+if [ ! -z "$help" ]
+then
+	echo "   "
+	echo "   $0 <thresh>"
+	echo "   This script will estimate a white matter skeleton from FA"
+	echo "   and then: Project the FA, RD, AD, and MD results onto it."
+	echo "   The projection vectors  are determined by the unblurred"
+	echo "   images and the values are determined by the Gaussian-"
+	echo "   filtered image"
+	echo "   Usage:"
+	echo "   -h, --help: Display this message"
+	echo "   --nogaussian: Do not use the Gaussian-blurred image sets."
+	echo "                 If this is not set, the Gaussians will be"
+	echo "                 used if they are present. Otherwise, they"
+	echo "                 won't be."
+	echo "   -t <number>: threshold for skeleton (default: 0.2)"
+	echo "   "
+	exit
+fi
+
+
+echo "creating skeleton mask using threshold $thresh"
+#echo $thresh > thresh.txt
+if [ ! -e "stats/mean_FA_skeleton_mask.nii.gz" ]; then ${FSLDIR}/bin/fslmaths stats/mean_FA_skeleton -thr $thresh -bin stats/mean_FA_skeleton_mask; fi
+
+echo "creating skeleton distancemap (for use in projection search)"
+if [ ! -e "stats/mean_FA_skeleton_mask_dst.nii.gz" ];
+then
+	${FSLDIR}/bin/fslmaths stats/mean_FA_mask -mul -1 -add 1 -add stats/mean_FA_skeleton_mask stats/mean_FA_skeleton_mask_dst
+	${FSLDIR}/bin/distancemap -i stats/mean_FA_skeleton_mask_dst -o stats/mean_FA_skeleton_mask_dst
+fi
+
+for MEAS in FA AD RD MD
+do	
+	echo "projecting all ${MEAS} data onto skeleton"
+	if [ ! -z "$nogaussian" ]
+	then
+		echo "Not using Gaussian"
+		if [ ! -e "stats/all_${MEAS}_skeletonised_nogaussian.nii.gz" ]
+		then
+			${FSLDIR}/bin/tbss_skeleton -i stats/mean_${MEAS} -p $thresh stats/mean_FA_skeleton_mask_dst ${FSLDIR}/data/standard/LowerCingulum_1mm stats/all_FA stats/all_${MEAS}_skeletonised_nogaussian -a stats/all_${MEAS}
+		fi
+	else
+		echo "Using Gaussian"
+		if [ ! -e "stats/all_${MEAN}_skeletonised.nii.gz" ]
+		then	
+			${FSLDIR}/bin/tbss_skeleton -i stats/mean_${MEAS} -p $thresh stats/mean_FA_skeleton_mask_dst ${FSLDIR}/data/standard/LowerCingulum_1mm stats/all_FA stats/all_${MEAS}_skeletonised -a stats/all_${MEAS}_gaussian
+		fi
+	fi
+done

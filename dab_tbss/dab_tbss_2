@@ -1,0 +1,154 @@
+#!/bin/bash
+
+help=`echo $@ | grep "\(--help\|-h\)"`
+nogui=`echo $@ | grep "\(--nogui\)"`
+nogaussian=`echo $@ | grep "\(--nogaussian\|-ng\)"`
+sigma=`echo $@ | sed 's/.*[[:space:]]*-s[[:space:]]*\(\w*\).*/\1/g' | grep ^[0-9]*$`; if [ -z "$sigma" ]; then sigma=3; fi
+all_measures=`echo $@ | grep '\(--\)\(RD\|AD\|MD\|FA\)'`
+compute_FA=`echo $@ | grep "\(--FA\)"`
+compute_AD=`echo $@ | grep "\(--AD\)"`
+compute_MD=`echo $@ | grep "\(--MD\)"`
+compute_RD=`echo $@ | grep "\(--RD\)"`
+nomaskstep=`echo $@ | grep '\(--nomaskstep\)'`
+if [ -z "$all_measures" ]
+then
+	compute_FA="line"
+	compute_AD="line"
+	compute_MD="line"
+	compute_RD="line"
+fi
+
+if [ ! -z "$help" ]
+then
+	echo "   "
+	echo "   $0 [options]"
+	echo "   Run this script in the same folder that you ran alt_tbss_1.sh in."
+	echo "   This will produce blurred and unblurred estimations of the DTI images."
+	echo "   provided by the previous step."
+	echo "   Usage:"
+	echo "   -h, --help: Display this message"
+	echo "   -ng, --nogaussian: Do not estimate gaussian-blurred images to be projected"
+	echo "                onto the skeleton; only project unblurred data"
+	echo "   -s <number>: Sigma value for Gaussian"
+	echo "   --nogui: Do not display and graphical interfaces while running this script"
+	echo "   --nomaskstep: Do not mask all_{MEAS} files while computing this (usually"
+	echo "               only when re-running this"
+	echo "   "
+	exit
+fi
+
+# Locations of parameter programs and files
+DTIAtlasBuilderSoftwareConfig=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/DTIAtlasBuilderSoftConfiguration.txt
+dtiprocess=`cat $DTIAtlasBuilderSoftwareConfig | grep dtiprocess | sed 's/.*=//g'`
+echo "Estimating FA, AD, MD from DTI Images"
+mkdir -p FA
+mkdir -p AD
+mkdir -p MD
+mkdir -p RD
+ALL_FA=""
+ALL_AD=""
+ALL_MD=""
+ALL_RD=""
+ALL_FA_GAUSSIAN=""
+ALL_AD_GAUSSIAN=""
+ALL_MD_GAUSSIAN=""
+ALL_RD_GAUSSIAN=""
+
+#Need to incorporate Blur images into this --- GaussianBlurImageFilter
+for i in `ls -d1 $PWD/DTI/*float.nii.gz`
+  do
+     basename=`echo $i | sed 's/\.[^\/]*$//g' | sed 's/^.*\///g'`
+
+     echo "Estimating measurements of ${basename}"
+     out_DTI=DTI/${basename}.nii.gz
+
+     out_FA=FA/${basename}.nii.gz
+     out_AD=AD/${basename}.nii.gz
+     out_MD=MD/${basename}.nii.gz
+     out_RD=RD/${basename}.nii.gz
+     out_FA_gaussian=FA/${basename}_gaussian.nii.gz
+     out_AD_gaussian=AD/${basename}_gaussian.nii.gz
+     out_MD_gaussian=MD/${basename}_gaussian.nii.gz
+     out_RD_gaussian=RD/${basename}_gaussian.nii.gz
+
+     ALL_FA=$ALL_FA" "$PWD/$out_FA
+     ALL_AD=$ALL_AD" "$PWD/$out_AD
+     ALL_MD=$ALL_MD" "$PWD/$out_MD
+     ALL_RD=$ALL_RD" "$PWD/$out_RD
+     ALL_FA_GAUSSIAN=$ALL_FA" "$PWD/$out_FA_gaussian
+     ALL_AD_GAUSSIAN=$ALL_AD" "$PWD/$out_AD_gaussian
+     ALL_MD_GAUSSIAN=$ALL_MD" "$PWD/$out_MD_gaussian
+     ALL_RD_GAUSSIAN=$ALL_RD" "$PWD/$out_RD_gaussian
+
+     # Estimate FA, AD, MD, RD from DTI
+	if [ ! -e "$out_DTI" ] || [ ! -e "$out_AD" ] || [ ! -e "$out_RD" ] || [ ! -e "$out_MD" ]
+	then
+		$dtiprocess --dti_image $out_DTI -f $out_FA --lambda1_output $out_AD --RD_output $out_RD -m $out_MD --scalar_float
+		$FSLDIR/bin/fslmaths $out_AD -mul 1000 $out_AD
+		$FSLDIR/bin/fslmaths $out_MD -mul 1000 $out_MD
+		$FSLDIR/bin/fslmaths $out_RD -mul 1000 $out_RD
+	fi
+     # Output Gaussian blurred FA, AD, MD, RD
+     if [ -z "$nogaussian" ]
+     then
+           echo "Gaussian blurring ${basename}"
+           if [ ! -e "$out_FA_gaussian" ]; then $FSLDIR/bin/fslmaths $out_FA -s $sigma $out_FA_gaussian; fi
+           if [ ! -e "$out_AD_gaussian" ]; then $FSLDIR/bin/fslmaths $out_AD -s $sigma $out_AD_gaussian; fi
+           if [ ! -e "$out_MD_gaussian" ]; then $FSLDIR/bin/fslmaths $out_MD -s $sigma $out_MD_gaussian; fi
+           if [ ! -e "$out_RD_gaussian" ]; then $FSLDIR/bin/fslmaths $out_RD -s $sigma $out_RD_gaussian; fi
+     fi
+
+     if [ ! -e "FA/${basename}_mask.nii.gz" ]; then $FSLDIR/bin/fslmaths $out_FA -bin FA/${basename}_mask.nii.gz; fi # Create mask from FA
+done
+
+mkdir -p stats
+
+echo "Merging FA files"
+if [ ! -e "stats/all_FA.nii.gz" ] && [ ! -z "$compute_FA" ]; then $FSLDIR/bin/fslmerge -t stats/all_FA.nii.gz $ALL_FA; fi
+if [ ! -e "stats/all_FA_gaussian.nii.gz" ] && [ -z "$nogaussian" ] && [ ! -z "$compute_FA" ]; then $FSLDIR/bin/fslmerge -t stats/all_FA_gaussian.nii.gz $ALL_FA_GAUSSIAN; fi
+
+echo "Merging AD files"
+if [ ! -e "stats/all_AD.nii.gz" ] && [ ! -z "$compute_AD" ]; then $FSLDIR/bin/fslmerge -t stats/all_AD.nii.gz $ALL_AD; fi
+if [ ! -e "stats/all_AD_gaussian.nii.gz" ] && [ -z "$nogaussian" ] && [ ! -z "$compute_AD" ]; then $FSLDIR/bin/fslmerge -t stats/all_AD_gaussian.nii.gz $ALL_AD_GAUSSIAN; fi
+
+echo "Merging MD files"
+if [ ! -e "stats/all_MD.nii.gz" ] && [ ! -z "$compute_AD" ]; then $FSLDIR/bin/fslmerge -t stats/all_MD.nii.gz $ALL_MD; fi
+if [ ! -e "stats/all_MD_gaussian.nii.gz" ] && [ -z "$nogaussian" ] && [ ! -z "$compute_MD" ]; then $FSLDIR/bin/fslmerge -t stats/all_MD_gaussian.nii.gz $ALL_MD_GAUSSIAN; fi
+
+echo "Merging RD files"
+if [ ! -e "stats/all_RD.nii.gz" ] && [ ! -z "$compute_RD" ]; then $FSLDIR/bin/fslmerge -t stats/all_RD.nii.gz $ALL_RD; fi
+if [ ! -e "stats/all_RD_gaussian.nii.gz" ] && [ -z "$nogaussian" ] && [ ! -z "$compute_RD" ]; then $FSLDIR/bin/fslmerge -t stats/all_RD_gaussian.nii.gz $ALL_RD_GAUSSIAN; fi
+
+echo "Creating valid mask and mean FA"
+
+if [ ! -e "stats/mean_FA.nii.gz" ]; then $FSLDIR/bin/fslmaths stats/all_FA -Tmean stats/mean_FA; fi
+
+if [ ! -e "stats/mean_FA_mask.nii.gz" ]
+then
+	$FSLDIR/bin/fslmaths stats/mean_FA -thr 0.00005 -bin stats/mean_FA_mask -odt char
+fi
+
+if [ -z "$nomaskstep" ]
+then
+	echo "Masking data"
+	for MEAS in FA AD MD RD
+	do
+		echo "Masking "${MEAS}
+		touch mask_files/.all_mask_record
+		mask_rec=`cat mask_files/.all_mask_record`
+		if [[ $mask_rec != *"${MEAS}"* ]]
+		then
+			$FSLDIR/bin/fslmaths stats/all_${MEAS} -mas stats/mean_FA_mask stats/all_${MEAS}
+			echo "${MEAS} " >> mask_files/.all_mask_record
+		fi
+	done
+fi
+
+if [ ! -e "stats/mean_FA.nii.gz" ]; then $FSLDIR/bin/fslmaths stats/all_FA -Tmean stats/mean_FA; fi
+for MEAS in AD MD RD
+do
+	if [ ! -e "stats/mean_${MEAS}.nii.gz" ]; then $FSLDIR/bin/fslmaths stats/all_${MEAS} -Tmean stats/mean_${MEAS}; fi
+done
+
+echo "Skeletonising mean FA"
+if [ ! -e "stats/mean_FA_skeleton.nii.gz" ]; then $FSLDIR/bin/tbss_skeleton -i stats/mean_FA -o stats/mean_FA_skeleton; fi
